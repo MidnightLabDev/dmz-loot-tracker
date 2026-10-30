@@ -25,9 +25,31 @@ th{color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.06em
 footer{color:var(--mut);font-size:12px;text-align:center;padding:30px 20px}
 </style></head><body>
 <header><h1>DMZ <span>Loot</span> Tracker</h1>
-<nav><button data-t="dash" class="on">Dashboard</button> <button data-t="raid">Log Raid</button> <button data-t="stash">Stash</button> <button data-t="db">Item Values</button></nav></header>
+<nav><button data-t="scan" class="on">📷 Scan</button> <button data-t="dash">Dashboard</button> <button data-t="raid">Log Raid</button> <button data-t="stash">Stash</button> <button data-t="db">Item Values</button></nav></header>
 <main>
-<section id="dash" class="on">
+<section id="scan" class="on">
+ <div class="card" id="keyBox">
+  <small>One-time setup</small>
+  <p>Scanning uses your own <b style="display:inline;font-size:15px;color:var(--txt)">free</b> Google Gemini key, so it costs nothing. Get one in about a minute (no card): open Google AI Studio, tap "Create API key", copy it, paste it here.</p>
+  <div class="row"><a class="btn" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Get free key</a><input id="gKey" placeholder="Paste Gemini API key" style="flex:1;min-width:200px"><button class="btn pri" id="saveKey">Save</button></div>
+  <p class="mut">Your key stays on this device and is only sent to Google.</p>
+ </div>
+ <div class="card" style="margin-top:12px;text-align:center">
+  <label class="btn pri" style="display:inline-block;padding:16px 28px;font-size:18px">📷 Snap stash / extract screen<input type="file" id="cam" accept="image/*" capture="environment" hidden></label>
+  <p class="mut">Works with a phone photo of your monitor or a screenshot. Hover tooltips aren't needed; it reads the item icons and names.</p>
+  <div id="scanStatus" class="mut"></div><img id="prev" style="max-width:100%;border-radius:6px;margin-top:8px;display:none">
+ </div>
+ <div class="card" id="scanOut" style="margin-top:12px;display:none">
+  <div class="grid" style="margin-bottom:8px">
+   <div class="card"><small>Sell now</small><b id="sSell">$0</b></div>
+   <div class="card"><small>Keep</small><b id="sKeep" style="color:var(--keep)">0</b></div>
+   <div class="card"><small>Total value</small><b id="sTot">$0</b></div>
+  </div>
+  <table id="scanT"></table>
+  <div class="row"><button class="btn pri" id="asStash">Save as my stash</button><button class="btn" id="asRaid">Log as raid extract</button><span class="mut" id="scanMsg"></span></div>
+ </div>
+</section>
+<section id="dash">
  <div class="grid">
   <div class="card"><small>Raids logged</small><b id="kRaids">0</b></div>
   <div class="card"><small>Total extracted</small><b id="kTotal">$0</b></div>
@@ -56,7 +78,7 @@ footer{color:var(--mut);font-size:12px;text-align:center;padding:30px 20px}
 <section id="db"><div class="card"><input id="dq" placeholder="Filter…" style="width:100%"><table id="dbT"></table>
 <p class="mut"><span class="tag keep">KEEP</span> needed for FOB upgrades, sell spares · <span class="tag sell">SELL</span> cash it · <span class="tag craft">CRAFT</span> 3D Printer ingredient · <span class="tag use">USE</span> run it in raids</p></div></section>
 </main>
-<footer>Fan-made, not affiliated with Activision. Runs entirely in your browser and never touches the game. Your data stays on this device. Values from early access (metaradar.gg, codmunity.gg, Oct 2026) and may change.</footer>
+<footer>Fan-made, not affiliated with Activision. Runs entirely in your browser and never touches the game. Your data and key stay on this device. Values from early access (metaradar.gg, codmunity.gg, Oct 2026) and may change.</footer>
 <script src="items.js"></script>
 <script>
 const $=s=>document.querySelector(s),fmt=n=>'$'+Math.round(n).toLocaleString();
@@ -90,4 +112,28 @@ $('#exp').onclick=()=>{const a=document.createElement('a');a.href=URL.createObje
 $('#imp').onchange=e=>{const f=e.target.files[0];f&&f.text().then(t=>{S=JSON.parse(t);save()})};
 $('#wipe').onclick=()=>{if(confirm('Erase all raids and stash?')){S={raids:[],stash:{}};save()}};
 render();renderDB();renderDraft();
+// ---- Scan (Gemini vision, user's own free key) ----
+let scanned={};const MODELS=['gemini-2.5-flash','gemini-2.5-flash-lite'];
+const gk=()=>localStorage.getItem('dmzlt_key')||'';
+function keyUI(){$('#keyBox').style.display=gk()?'none':'block'}
+$('#saveKey').onclick=()=>{const k=$('#gKey').value.trim();if(!k)return;localStorage.setItem('dmzlt_key',k);keyUI()};
+function shrink(file){return new Promise(r=>{const img=new Image();img.onload=()=>{const m=1600,s=Math.min(1,m/Math.max(img.width,img.height)),c=document.createElement('canvas');c.width=img.width*s;c.height=img.height*s;c.getContext('2d').drawImage(img,0,0,c.width,c.height);r(c.toDataURL('image/jpeg',.85))};img.src=URL.createObjectURL(file)})}
+async function ask(model,b64){const names=ITEMS.map(i=>i[0]).join('; ');
+const prompt=`This is a photo or screenshot of a Call of Duty: Modern Warfare 4 DMZ stash, backpack, or after-action loot screen. Identify every item visible and how many of each (read stack counts). Map each to the closest name from this list when it matches: ${names}. Weapon manuals -> "Weapon Manual", recipes -> "Recipe", any key -> "Key (any)". Items not in the list: use their name as shown. Ignore weapons. Return JSON only: {"items":[{"name":string,"qty":integer}]}.`;
+const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(gk())}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt},{inline_data:{mime_type:'image/jpeg',data:b64}}]}],generationConfig:{responseMimeType:'application/json',temperature:0}})});
+const j=await res.json();if(!res.ok)throw new Error(j.error?.message||res.status);
+return JSON.parse(j.candidates[0].content.parts[0].text).items||[]}
+$('#cam').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;if(!gk()){keyUI();return alert('Add your free Gemini key first')}
+const url=await shrink(f);$('#prev').src=url;$('#prev').style.display='block';$('#scanStatus').textContent='Analyzing your loot…';$('#scanOut').style.display='none';
+let items,err;for(const m of MODELS){try{items=await ask(m,url.split(',')[1]);break}catch(x){err=x}}
+if(!items){$('#scanStatus').textContent='Scan failed: '+err.message+(/key/i.test(err.message)?' (check your key)':/quota|exhaust|429/i.test(err.message)?' (free daily limit hit, try later)':'');return}
+scanned={};items.forEach(i=>{const n=(i.name||'').trim();if(n&&i.qty>0)scanned[n]=(scanned[n]||0)+Math.round(i.qty)});
+$('#scanStatus').textContent=Object.keys(scanned).length?'':'No items recognised. Try a closer, straighter shot.';renderScan()};
+function renderScan(){const rows=Object.entries(scanned).map(([n,q])=>{const i=IDX[n]||{val:0,call:'sell',note:'Not in database'};return{n,q,i}}).sort((a,b)=>({sell:0,keep:1,craft:2,use:3}[a.i.call]-{sell:0,keep:1,craft:2,use:3}[b.i.call])||b.i.val*b.q-a.i.val*a.q);
+$('#scanT').innerHTML='<tr><th>Item</th><th>Call</th><th class="n">Qty</th><th class="n">Value</th><th>Why</th></tr>'+rows.map(r=>`<tr><td>${r.n}</td><td>${tag(r.i.call)}</td><td class="n">${r.q}</td><td class="n">${r.i.val?fmt(r.i.val*r.q):'–'}</td><td class="mut">${r.i.note||({sell:'Cash it at the FOB',craft:'3D Printer ingredient',use:'Run it in raids'}[r.i.call]||'')}</td></tr>`).join('');
+$('#sSell').textContent=fmt(rows.filter(r=>r.i.call==='sell').reduce((s,r)=>s+r.i.val*r.q,0));$('#sKeep').textContent=rows.filter(r=>r.i.call!=='sell').reduce((s,r)=>s+r.q,0)+' items';$('#sTot').textContent=fmt(rows.reduce((s,r)=>s+r.i.val*r.q,0));$('#scanOut').style.display='block';$('#scanMsg').textContent=''}
+$('#asStash').onclick=()=>{S.stash={...scanned};save();$('#scanMsg').textContent='Stash saved ✓'};
+$('#asRaid').onclick=()=>{const v=val(scanned);S.raids.push({d:new Date().toISOString(),op:prompt('Op / area?','')||'Unknown',res:'exfil',cash:0,items:{...scanned},v});for(const[n,q]of Object.entries(scanned))if(!['Cash bag','Weapon Manual','Recipe'].includes(n))S.stash[n]=(S.stash[n]||0)+q;save();$('#scanMsg').textContent='Raid logged ✓'};
+keyUI();
+
 </script></body></html>
