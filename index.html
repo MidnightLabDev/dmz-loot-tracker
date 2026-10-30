@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DMZ Loot Tracker · MW4</title>
+<style>
+:root{--bg:#0d0f0c;--panel:#161a14;--line:#2a3125;--txt:#e6e8df;--mut:#8d9583;--acc:#c8f04a;--keep:#4ab0f0;--sell:#c8f04a;--craft:#f0a84a;--use:#b98af0}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.4 system-ui,Segoe UI,Roboto,sans-serif}
+header{padding:18px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+h1{margin:0;font-size:20px;letter-spacing:.08em;text-transform:uppercase}h1 span{color:var(--acc)}
+nav button,.btn{background:var(--panel);color:var(--txt);border:1px solid var(--line);padding:8px 14px;border-radius:6px;cursor:pointer;font:inherit}
+nav button.on,.btn.pri{background:var(--acc);color:#111;border-color:var(--acc);font-weight:600}
+main{max-width:1100px;margin:0 auto;padding:20px}section{display:none}section.on{display:block}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:20px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px}
+.card b{display:block;font-size:24px;color:var(--acc)}.card small{color:var(--mut);text-transform:uppercase;font-size:11px;letter-spacing:.08em}
+input,select{background:#0a0c09;color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:8px;font:inherit}
+table{width:100%;border-collapse:collapse;margin-top:10px}th,td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+th{color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.06em}td.n{text-align:right;font-variant-numeric:tabular-nums}
+.tag{padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600;color:#111}.keep{background:var(--keep)}.sell{background:var(--sell)}.craft{background:var(--craft)}.use{background:var(--use)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0}.mut{color:var(--mut);font-size:13px}
+.x{background:none;border:none;color:var(--mut);cursor:pointer;font-size:16px}
+#results{max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:6px;margin-top:6px}
+#results div{padding:7px 10px;cursor:pointer;display:flex;justify-content:space-between;gap:8px}#results div:hover{background:#1f251b}
+.bar{height:8px;background:var(--acc);border-radius:4px}
+footer{color:var(--mut);font-size:12px;text-align:center;padding:30px 20px}
+</style></head><body>
+<header><h1>DMZ <span>Loot</span> Tracker</h1>
+<nav><button data-t="dash" class="on">Dashboard</button> <button data-t="raid">Log Raid</button> <button data-t="stash">Stash</button> <button data-t="db">Item Values</button></nav></header>
+<main>
+<section id="dash" class="on">
+ <div class="grid">
+  <div class="card"><small>Raids logged</small><b id="kRaids">0</b></div>
+  <div class="card"><small>Total extracted</small><b id="kTotal">$0</b></div>
+  <div class="card"><small>Avg per raid</small><b id="kAvg">$0</b></div>
+  <div class="card"><small>Stash value</small><b id="kStash">$0</b></div>
+ </div>
+ <div class="card"><small>Haul per raid (last 15)</small><div id="chart" style="margin-top:10px"></div></div>
+ <div class="card" style="margin-top:12px"><small>Best ops / areas</small><table id="bestOps"></table></div>
+ <div class="card" style="margin-top:12px"><small>Raid history</small><table id="hist"></table></div>
+ <div class="row" style="margin-top:16px"><button class="btn" id="exp">Export data</button><label class="btn">Import data<input type="file" id="imp" accept=".json" hidden></label><button class="btn" id="wipe">Reset all</button></div>
+</section>
+<section id="raid">
+ <div class="card">
+  <div class="row"><input id="rOp" placeholder="Op / area (e.g. Cheongun Village)" style="flex:1;min-width:220px"><input id="rCash" type="number" placeholder="Bank cash earned" style="width:170px">
+  <select id="rRes"><option value="exfil">Exfiled</option><option value="died">Died (secure slots only)</option></select></div>
+  <div class="mut">Ops/bounty cash goes in "Bank cash earned". Add the items you brought out:</div>
+  <input id="q" placeholder="Search item…" style="width:100%;margin-top:8px"><div id="results"></div>
+  <table id="draft"></table>
+  <div class="row"><b id="draftTotal">Raid value: $0</b><span style="flex:1"></span><label class="mut"><input type="checkbox" id="toStash" checked> also add to stash</label><button class="btn pri" id="saveRaid">Save raid</button></div>
+ </div>
+</section>
+<section id="stash">
+ <div class="card"><div class="row"><input id="sq" placeholder="Add item to stash…" style="flex:1"></div><div id="sresults"></div>
+ <table id="stashT"></table><div class="row"><b id="stashTotal"></b><span style="flex:1"></span><span class="mut">Sell-flagged value: <b id="sellable" style="color:var(--sell)"></b></span></div></div>
+</section>
+<section id="db"><div class="card"><input id="dq" placeholder="Filter…" style="width:100%"><table id="dbT"></table>
+<p class="mut"><span class="tag keep">KEEP</span> needed for FOB upgrades, sell spares · <span class="tag sell">SELL</span> cash it · <span class="tag craft">CRAFT</span> 3D Printer ingredient · <span class="tag use">USE</span> run it in raids</p></div></section>
+</main>
+<footer>Fan-made, not affiliated with Activision. Runs entirely in your browser and never touches the game. Your data stays on this device. Values from early access (metaradar.gg, codmunity.gg, Oct 2026) and may change.</footer>
+<script src="items.js"></script>
+<script>
+const $=s=>document.querySelector(s),fmt=n=>'$'+Math.round(n).toLocaleString();
+const IDX=Object.fromEntries(ITEMS.map(i=>[i[0],{name:i[0],cat:i[1],rar:i[2],val:i[3],call:i[4],note:i[5]}]));
+let S=JSON.parse(localStorage.getItem('dmzlt')||'{"raids":[],"stash":{}}');let draft={};
+const save=()=>{localStorage.setItem('dmzlt',JSON.stringify(S));render()};
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button,section').forEach(e=>e.classList.remove('on'));b.classList.add('on');$('#'+b.dataset.t).classList.add('on')});
+const tag=c=>`<span class="tag ${c}">${c.toUpperCase()}</span>`;
+function search(inp,box,pick){inp.oninput=()=>{const q=inp.value.toLowerCase().trim();box.innerHTML=!q?'':Object.values(IDX).filter(i=>i.name.toLowerCase().includes(q)).slice(0,12).map(i=>`<div data-n="${i.name}"><span>${i.name} <span class="mut">${i.cat}</span></span><span>${i.val?fmt(i.val):'–'}</span></div>`).join('');box.querySelectorAll('div').forEach(d=>d.onclick=()=>{pick(d.dataset.n);inp.value='';box.innerHTML='';inp.focus()})}}
+search($('#q'),$('#results'),n=>{draft[n]=(draft[n]||0)+1;renderDraft()});
+search($('#sq'),$('#sresults'),n=>{S.stash[n]=(S.stash[n]||0)+1;save()});
+function qtyRows(obj,id,onchg){return Object.entries(obj).map(([n,q])=>{const i=IDX[n]||{val:0,call:'sell'};return `<tr><td>${n}</td><td>${tag(i.call)}</td><td class="n"><input type="number" min="0" value="${q}" data-n="${n}" style="width:64px"></td><td class="n">${fmt(i.val*q)}</td><td><button class="x" data-d="${n}">✕</button></td></tr>`}).join('')}
+function bind(tbl,obj,after){tbl.querySelectorAll('input').forEach(e=>e.onchange=()=>{const v=+e.value;v>0?obj[e.dataset.n]=v:delete obj[e.dataset.n];after()});tbl.querySelectorAll('[data-d]').forEach(e=>e.onclick=()=>{delete obj[e.dataset.d];after()})}
+const val=o=>Object.entries(o).reduce((s,[n,q])=>s+(IDX[n]?.val||0)*q,0);
+function renderDraft(){const t=$('#draft');t.innerHTML=Object.keys(draft).length?'<tr><th>Item</th><th>Call</th><th class="n">Qty</th><th class="n">Value</th><th></th></tr>'+qtyRows(draft):'';bind(t,draft,renderDraft);$('#draftTotal').textContent='Raid value: '+fmt(val(draft)+(+$('#rCash').value||0))}
+$('#rCash').oninput=renderDraft;
+$('#saveRaid').onclick=()=>{const cash=+$('#rCash').value||0;if(!Object.keys(draft).length&&!cash)return alert('Add items or cash first');
+S.raids.push({d:new Date().toISOString(),op:$('#rOp').value||'Unknown',res:$('#rRes').value,cash,items:draft,v:val(draft)+cash});
+if($('#toStash').checked)for(const[n,q]of Object.entries(draft))if(n!=='Cash bag'&&n!=='Weapon Manual'&&n!=='Recipe')S.stash[n]=(S.stash[n]||0)+q;
+draft={};$('#rOp').value='';$('#rCash').value='';renderDraft();save();document.querySelector('[data-t=dash]').click()};
+function render(){const R=S.raids,tot=R.reduce((s,r)=>s+r.v,0);$('#kRaids').textContent=R.length;$('#kTotal').textContent=fmt(tot);$('#kAvg').textContent=fmt(R.length?tot/R.length:0);$('#kStash').textContent=fmt(val(S.stash));
+const last=R.slice(-15),mx=Math.max(1,...last.map(r=>r.v));$('#chart').innerHTML=last.length?last.map((r,i)=>`<div class="row" style="margin:4px 0"><span class="mut" style="width:120px">${new Date(r.d).toLocaleDateString()} ${r.res==='died'?'☠':''}</span><div class="bar" style="width:${r.v/mx*60}%"></div><span>${fmt(r.v)}</span></div>`).join(''):'<p class="mut">Log your first raid to see trends.</p>';
+const ops={};R.forEach(r=>{(ops[r.op]??={n:0,v:0});ops[r.op].n++;ops[r.op].v+=r.v});$('#bestOps').innerHTML='<tr><th>Op / area</th><th class="n">Raids</th><th class="n">Avg haul</th></tr>'+Object.entries(ops).sort((a,b)=>b[1].v/b[1].n-a[1].v/a[1].n).map(([o,x])=>`<tr><td>${o}</td><td class="n">${x.n}</td><td class="n">${fmt(x.v/x.n)}</td></tr>`).join('');
+$('#hist').innerHTML='<tr><th>Date</th><th>Op</th><th>Result</th><th class="n">Items</th><th class="n">Value</th><th></th></tr>'+R.map((r,i)=>[r,i]).reverse().map(([r,i])=>`<tr><td>${new Date(r.d).toLocaleString()}</td><td>${r.op}</td><td>${r.res}</td><td class="n">${Object.values(r.items).reduce((a,b)=>a+b,0)}</td><td class="n">${fmt(r.v)}</td><td><button class="x" data-r="${i}">✕</button></td></tr>`).join('');
+$('#hist').querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{if(confirm('Delete this raid?')){S.raids.splice(+b.dataset.r,1);save()}});
+const st=$('#stashT');st.innerHTML=Object.keys(S.stash).length?'<tr><th>Item</th><th>Call</th><th class="n">Qty</th><th class="n">Value</th><th></th></tr>'+qtyRows(S.stash):'<tr><td class="mut">Stash is empty.</td></tr>';bind(st,S.stash,save);
+$('#stashTotal').textContent='Stash value: '+fmt(val(S.stash));$('#sellable').textContent=fmt(Object.entries(S.stash).filter(([n])=>IDX[n]?.call==='sell').reduce((s,[n,q])=>s+IDX[n].val*q,0))}
+function renderDB(){const q=$('#dq').value.toLowerCase();$('#dbT').innerHTML='<tr><th>Item</th><th>Category</th><th>Rarity</th><th class="n">Value</th><th>Call</th><th>Note</th></tr>'+Object.values(IDX).filter(i=>(i.name+i.cat).toLowerCase().includes(q)).sort((a,b)=>b.val-a.val).map(i=>`<tr><td>${i.name}</td><td class="mut">${i.cat}</td><td class="mut">${i.rar}</td><td class="n">${i.val?fmt(i.val):'–'}</td><td>${tag(i.call)}</td><td class="mut">${i.note}</td></tr>`).join('')}
+$('#dq').oninput=renderDB;
+$('#exp').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:'application/json'}));a.download='dmz-loot.json';a.click()};
+$('#imp').onchange=e=>{const f=e.target.files[0];f&&f.text().then(t=>{S=JSON.parse(t);save()})};
+$('#wipe').onclick=()=>{if(confirm('Erase all raids and stash?')){S={raids:[],stash:{}};save()}};
+render();renderDB();renderDraft();
+</script></body></html>
