@@ -126,8 +126,8 @@ const j=await res.json();if(!res.ok){if(think&&/thinking/i.test(j.error?.message
 return JSON.parse(j.candidates[0].content.parts[0].text).items||[]}
 $('#cam').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;if(!gk()){keyUI();return alert('Add your free Gemini key first')}
 const url=await shrink(f);$('#prev').src=url;$('#prev').style.display='block';$('#scanStatus').textContent='Analyzing your loot…';const t0=Date.now();$('#scanOut').style.display='none';
-let items,err,tried=new Set();const b64=url.split(',')[1];const good=localStorage.getItem('dmzlt_model');
-const tryList=async L=>{for(const m of L){if(tried.has(m))continue;tried.add(m);try{items=await ask(m,b64);localStorage.setItem('dmzlt_model',m);return true}catch(x){err=x;if(/quota|exhaust|429|API key|permission/i.test(x.message))return true}}};
+let items,err,tried=new Set();const b64=url.split(',')[1];const good=localStorage.getItem('dmzlt_model2');
+const tryList=async L=>{for(const m of L){if(tried.has(m))continue;tried.add(m);try{items=await ask(m,b64);localStorage.setItem('dmzlt_model2',m);return true}catch(x){err=x;if(/quota|exhaust|429|API key|permission/i.test(x.message))return true}}};
 await tryList([good,...MODELS].filter(Boolean))||items||await tryList(await liveModels());
 if(!items){$('#scanStatus').textContent='Scan failed: '+err.message+(/key/i.test(err.message)?' (check your key)':/quota|exhaust|429/i.test(err.message)?' (free daily limit hit, try later)':'');return}
 scanned={};items.forEach(i=>{const n=(i.name||'').trim();if(n&&i.qty>0)scanned[n]=(scanned[n]||0)+Math.round(i.qty)});
