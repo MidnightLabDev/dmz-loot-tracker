@@ -22,6 +22,15 @@ th{color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.06em
 #results{max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:6px;margin-top:6px}
 #results div{padding:7px 10px;cursor:pointer;display:flex;justify-content:space-between;gap:8px}#results div:hover{background:#1f251b}
 .bar{height:8px;background:var(--acc);border-radius:4px}
+.ic{width:40px;height:40px;object-fit:contain;background:#0a0c09;border:1px solid var(--line);border-radius:6px;flex:0 0 40px}
+.ic.ph{display:inline-flex;align-items:center;justify-content:center;color:var(--mut);font-size:16px}
+.it{display:flex;align-items:center;gap:10px}.it small{display:block;color:var(--mut);font-size:12px;line-height:1.3}
+nav{display:flex;gap:6px;flex-wrap:wrap}
+@media(max-width:640px){header{padding:12px;position:sticky;top:0;background:var(--bg);z-index:5}h1{font-size:17px}
+nav{flex-wrap:nowrap;overflow-x:auto;width:100%;-webkit-overflow-scrolling:touch}nav button{flex:0 0 auto;padding:9px 12px}
+main{padding:12px}.grid{grid-template-columns:1fr 1fr;gap:8px}.card{padding:12px}.card b{font-size:19px}
+th,td{padding:7px 4px;font-size:14px}.hm{display:none}input,select,.btn{font-size:16px}
+.row>input{min-width:0!important;flex:1 1 100%!important;width:100%!important}#scanT td:first-child{width:62%}}
 footer{color:var(--mut);font-size:12px;text-align:center;padding:30px 20px}
 </style></head><body>
 <header><h1>DMZ <span>Loot</span> Tracker</h1>
@@ -78,7 +87,7 @@ footer{color:var(--mut);font-size:12px;text-align:center;padding:30px 20px}
 <section id="db"><div class="card"><input id="dq" placeholder="Filter…" style="width:100%"><table id="dbT"></table>
 <p class="mut"><span class="tag keep">KEEP</span> needed for FOB upgrades, sell spares · <span class="tag sell">SELL</span> cash it · <span class="tag craft">CRAFT</span> 3D Printer ingredient · <span class="tag use">USE</span> run it in raids</p></div></section>
 </main>
-<footer>Fan-made, not affiliated with Activision. Runs entirely in your browser and never touches the game. Your data and key stay on this device. Values from early access (metaradar.gg, codmunity.gg, Oct 2026) and may change.</footer>
+<footer>Fan-made, not affiliated with Activision. Runs entirely in your browser and never touches the game. Your data and key stay on this device. Values from early access (metaradar.gg, codmunity.gg, Oct 2026); icons via dmzcodex.com and may change.</footer>
 <script src="items.js"></script>
 <script>
 const $=s=>document.querySelector(s),fmt=n=>'$'+Math.round(n).toLocaleString();
@@ -86,11 +95,13 @@ const IDX=Object.fromEntries(ITEMS.map(i=>[i[0],{name:i[0],cat:i[1],rar:i[2],val
 let S=JSON.parse(localStorage.getItem('dmzlt')||'{"raids":[],"stash":{}}');let draft={};
 const save=()=>{localStorage.setItem('dmzlt',JSON.stringify(S));render()};
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button,section').forEach(e=>e.classList.remove('on'));b.classList.add('on');$('#'+b.dataset.t).classList.add('on')});
+const ic=n=>{const s=IMG[n];return s?`<img class="ic" src="img/${s}.png" alt="" loading="lazy">`:`<span class="ic ph">?</span>`};
+const itemCell=(n,sub)=>`<div class="it">${ic(n)}<div>${n}${sub?`<small>${sub}</small>`:''}</div></div>`;
 const tag=c=>`<span class="tag ${c}">${c.toUpperCase()}</span>`;
 function search(inp,box,pick){inp.oninput=()=>{const q=inp.value.toLowerCase().trim();box.innerHTML=!q?'':Object.values(IDX).filter(i=>i.name.toLowerCase().includes(q)).slice(0,12).map(i=>`<div data-n="${i.name}"><span>${i.name} <span class="mut">${i.cat}</span></span><span>${i.val?fmt(i.val):'–'}</span></div>`).join('');box.querySelectorAll('div').forEach(d=>d.onclick=()=>{pick(d.dataset.n);inp.value='';box.innerHTML='';inp.focus()})}}
 search($('#q'),$('#results'),n=>{draft[n]=(draft[n]||0)+1;renderDraft()});
 search($('#sq'),$('#sresults'),n=>{S.stash[n]=(S.stash[n]||0)+1;save()});
-function qtyRows(obj,id,onchg){return Object.entries(obj).map(([n,q])=>{const i=IDX[n]||{val:0,call:'sell'};return `<tr><td>${n}</td><td>${tag(i.call)}</td><td class="n"><input type="number" min="0" value="${q}" data-n="${n}" style="width:64px"></td><td class="n">${fmt(i.val*q)}</td><td><button class="x" data-d="${n}">✕</button></td></tr>`}).join('')}
+function qtyRows(obj,id,onchg){return Object.entries(obj).map(([n,q])=>{const i=IDX[n]||{val:0,call:'sell'};return `<tr><td>${itemCell(n)}</td><td>${tag(i.call)}</td><td class="n"><input type="number" min="0" value="${q}" data-n="${n}" style="width:64px"></td><td class="n">${fmt(i.val*q)}</td><td><button class="x" data-d="${n}">✕</button></td></tr>`}).join('')}
 function bind(tbl,obj,after){tbl.querySelectorAll('input').forEach(e=>e.onchange=()=>{const v=+e.value;v>0?obj[e.dataset.n]=v:delete obj[e.dataset.n];after()});tbl.querySelectorAll('[data-d]').forEach(e=>e.onclick=()=>{delete obj[e.dataset.d];after()})}
 const val=o=>Object.entries(o).reduce((s,[n,q])=>s+(IDX[n]?.val||0)*q,0);
 function renderDraft(){const t=$('#draft');t.innerHTML=Object.keys(draft).length?'<tr><th>Item</th><th>Call</th><th class="n">Qty</th><th class="n">Value</th><th></th></tr>'+qtyRows(draft):'';bind(t,draft,renderDraft);$('#draftTotal').textContent='Raid value: '+fmt(val(draft)+(+$('#rCash').value||0))}
@@ -102,11 +113,11 @@ draft={};$('#rOp').value='';$('#rCash').value='';renderDraft();save();document.q
 function render(){const R=S.raids,tot=R.reduce((s,r)=>s+r.v,0);$('#kRaids').textContent=R.length;$('#kTotal').textContent=fmt(tot);$('#kAvg').textContent=fmt(R.length?tot/R.length:0);$('#kStash').textContent=fmt(val(S.stash));
 const last=R.slice(-15),mx=Math.max(1,...last.map(r=>r.v));$('#chart').innerHTML=last.length?last.map((r,i)=>`<div class="row" style="margin:4px 0"><span class="mut" style="width:120px">${new Date(r.d).toLocaleDateString()} ${r.res==='died'?'☠':''}</span><div class="bar" style="width:${r.v/mx*60}%"></div><span>${fmt(r.v)}</span></div>`).join(''):'<p class="mut">Log your first raid to see trends.</p>';
 const ops={};R.forEach(r=>{(ops[r.op]??={n:0,v:0});ops[r.op].n++;ops[r.op].v+=r.v});$('#bestOps').innerHTML='<tr><th>Op / area</th><th class="n">Raids</th><th class="n">Avg haul</th></tr>'+Object.entries(ops).sort((a,b)=>b[1].v/b[1].n-a[1].v/a[1].n).map(([o,x])=>`<tr><td>${o}</td><td class="n">${x.n}</td><td class="n">${fmt(x.v/x.n)}</td></tr>`).join('');
-$('#hist').innerHTML='<tr><th>Date</th><th>Op</th><th>Result</th><th class="n">Items</th><th class="n">Value</th><th></th></tr>'+R.map((r,i)=>[r,i]).reverse().map(([r,i])=>`<tr><td>${new Date(r.d).toLocaleString()}</td><td>${r.op}</td><td>${r.res}</td><td class="n">${Object.values(r.items).reduce((a,b)=>a+b,0)}</td><td class="n">${fmt(r.v)}</td><td><button class="x" data-r="${i}">✕</button></td></tr>`).join('');
+$('#hist').innerHTML='<tr><th>Date</th><th>Op</th><th class="hm">Result</th><th class="n hm">Items</th><th class="n">Value</th><th></th></tr>'+R.map((r,i)=>[r,i]).reverse().map(([r,i])=>`<tr><td>${new Date(r.d).toLocaleString()}</td><td>${r.op}</td><td class="hm">${r.res}</td><td class="n hm">${Object.values(r.items).reduce((a,b)=>a+b,0)}</td><td class="n">${fmt(r.v)}</td><td><button class="x" data-r="${i}">✕</button></td></tr>`).join('');
 $('#hist').querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{if(confirm('Delete this raid?')){S.raids.splice(+b.dataset.r,1);save()}});
 const st=$('#stashT');st.innerHTML=Object.keys(S.stash).length?'<tr><th>Item</th><th>Call</th><th class="n">Qty</th><th class="n">Value</th><th></th></tr>'+qtyRows(S.stash):'<tr><td class="mut">Stash is empty.</td></tr>';bind(st,S.stash,save);
 $('#stashTotal').textContent='Stash value: '+fmt(val(S.stash));$('#sellable').textContent=fmt(Object.entries(S.stash).filter(([n])=>IDX[n]?.call==='sell').reduce((s,[n,q])=>s+IDX[n].val*q,0))}
-function renderDB(){const q=$('#dq').value.toLowerCase();$('#dbT').innerHTML='<tr><th>Item</th><th>Category</th><th>Rarity</th><th class="n">Value</th><th>Call</th><th>Note</th></tr>'+Object.values(IDX).filter(i=>(i.name+i.cat).toLowerCase().includes(q)).sort((a,b)=>b.val-a.val).map(i=>`<tr><td>${i.name}</td><td class="mut">${i.cat}</td><td class="mut">${i.rar}</td><td class="n">${i.val?fmt(i.val):'–'}</td><td>${tag(i.call)}</td><td class="mut">${i.note}</td></tr>`).join('')}
+function renderDB(){const q=$('#dq').value.toLowerCase();$('#dbT').innerHTML='<tr><th>Item</th><th class="hm">Category</th><th class="hm">Rarity</th><th class="n">Value</th><th>Call</th></tr>'+Object.values(IDX).filter(i=>(i.name+i.cat).toLowerCase().includes(q)).sort((a,b)=>b.val-a.val).map(i=>`<tr><td>${itemCell(i.name,i.note)}</td><td class="mut hm">${i.cat}</td><td class="mut hm">${i.rar}</td><td class="n">${i.val?fmt(i.val):'–'}</td><td>${tag(i.call)}</td></tr>`).join('')}
 $('#dq').oninput=renderDB;
 $('#exp').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:'application/json'}));a.download='dmz-loot.json';a.click()};
 $('#imp').onchange=e=>{const f=e.target.files[0];f&&f.text().then(t=>{S=JSON.parse(t);save()})};
@@ -138,7 +149,7 @@ if(!items){$('#scanStatus').textContent='Scan failed: '+err.message+(/key/i.test
 scanned={};items.forEach(i=>{const n=(i.name||'').trim();if(n&&i.qty>0)scanned[n]=(scanned[n]||0)+Math.round(i.qty)});
 $('#scanStatus').textContent=Object.keys(scanned).length?'Done in '+((Date.now()-t0)/1000).toFixed(1)+'s':'No items recognised. Try a closer, straighter shot.';renderScan()};
 function renderScan(){const rows=Object.entries(scanned).map(([n,q])=>{const i=IDX[n]||{val:0,call:'sell',note:'Not in database'};return{n,q,i}}).sort((a,b)=>({sell:0,keep:1,craft:2,use:3}[a.i.call]-{sell:0,keep:1,craft:2,use:3}[b.i.call])||b.i.val*b.q-a.i.val*a.q);
-$('#scanT').innerHTML='<tr><th>Item</th><th>Call</th><th class="n">Qty</th><th class="n">Value</th><th>Why</th></tr>'+rows.map(r=>`<tr><td>${r.n}</td><td>${tag(r.i.call)}</td><td class="n">${r.q}</td><td class="n">${r.i.val?fmt(r.i.val*r.q):'–'}</td><td class="mut">${r.i.note||({sell:'Cash it at the FOB',craft:'3D Printer ingredient',use:'Run it in raids'}[r.i.call]||'')}</td></tr>`).join('');
+$('#scanT').innerHTML='<tr><th>Item</th><th>Call</th><th class="n">Qty</th><th class="n">Value</th></tr>'+rows.map(r=>`<tr><td>${itemCell(r.n,r.i.note||({sell:'Cash it at the FOB',craft:'3D Printer ingredient',use:'Run it in raids'}[r.i.call]||''))}</td><td>${tag(r.i.call)}</td><td class="n">${r.q}</td><td class="n">${r.i.val?fmt(r.i.val*r.q):'–'}</td></tr>`).join('');
 $('#sSell').textContent=fmt(rows.filter(r=>r.i.call==='sell').reduce((s,r)=>s+r.i.val*r.q,0));$('#sKeep').textContent=rows.filter(r=>r.i.call!=='sell').reduce((s,r)=>s+r.q,0)+' items';$('#sTot').textContent=fmt(rows.reduce((s,r)=>s+r.i.val*r.q,0));$('#scanOut').style.display='block';$('#scanMsg').textContent=''}
 $('#asStash').onclick=()=>{S.stash={...scanned};save();$('#scanMsg').textContent='Stash saved ✓'};
 $('#asRaid').onclick=()=>{const v=val(scanned);S.raids.push({d:new Date().toISOString(),op:prompt('Op / area?','')||'Unknown',res:'exfil',cash:0,items:{...scanned},v});for(const[n,q]of Object.entries(scanned))if(!['Cash bag','Weapon Manual','Recipe'].includes(n))S.stash[n]=(S.stash[n]||0)+q;save();$('#scanMsg').textContent='Raid logged ✓'};
